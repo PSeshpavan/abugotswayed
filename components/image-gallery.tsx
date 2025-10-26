@@ -122,10 +122,10 @@ export function ImageGallery() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen px-4">
         <div className="text-center space-y-4">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground">Loading memories...</p>
+          <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 animate-spin mx-auto text-primary" />
+          <p className="text-sm sm:text-base text-muted-foreground">Loading memories...</p>
         </div>
       </div>
     );
@@ -133,11 +133,11 @@ export function ImageGallery() {
 
   if (images.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center space-y-4 max-w-md px-4">
-          <div className="text-6xl">📸</div>
-          <h2 className="text-2xl font-bold">No Photos Yet</h2>
-          <p className="text-muted-foreground">
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <div className="text-center space-y-4 max-w-md">
+          <div className="text-5xl sm:text-6xl md:text-7xl">📸</div>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">No Photos Yet</h2>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Be the first to share a memory! Upload your photos to get started.
           </p>
         </div>
@@ -146,12 +146,12 @@ export function ImageGallery() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+    <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
         {images.map((image, index) => (
           <div
             key={`${image.id}-${index}`}
-            className="aspect-square relative group overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 bg-muted animate-in fade-in"
+            className="aspect-square relative group overflow-hidden rounded-md sm:rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 bg-muted animate-in fade-in"
             style={{
               animationDelay: `${(index % 15) * 50}ms`,
             }}
@@ -160,7 +160,7 @@ export function ImageGallery() {
               src={getImageUrl(image)}
               alt={image.name}
               fill
-              sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+              sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 16.66vw"
               className="object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
               unoptimized
@@ -174,20 +174,20 @@ export function ImageGallery() {
       {hasMore && (
         <div
           ref={loadMoreRef}
-          className="flex items-center justify-center py-8 mt-4"
+          className="flex items-center justify-center py-6 sm:py-8 mt-2 sm:mt-4"
         >
           {loadingMore && (
             <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Loading more...</span>
+              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+              <span className="text-sm sm:text-base">Loading more...</span>
             </div>
           )}
         </div>
       )}
 
       {!hasMore && images.length > 0 && (
-        <div className="text-center py-8 text-muted-foreground">
-          <p>You&apos;ve seen all the memories!</p>
+        <div className="text-center py-6 sm:py-8 text-muted-foreground">
+          <p className="text-sm sm:text-base">You&apos;ve seen all the memories!</p>
         </div>
       )}
     </div>

@@ -46,13 +46,25 @@ Follow these steps to set up Google Drive API integration:
    ```
 5. Copy the part after `/folders/` - this is your FOLDER_ID
 
-### Step 6: Share Folder with Service Account
+### Step 6: Share Folder with Service Account ⚠️ CRITICAL STEP
 
-1. Right-click on your Google Drive folder
-2. Click "Share"
-3. Paste the service account email (from the JSON file, it looks like: `xxx@xxx.iam.gserviceaccount.com`)
-4. Give it "Editor" permissions
-5. Click "Share"
+**This is the most important step! If you skip this, uploads will fail.**
+
+1. Right-click on your Google Drive folder (the one you created/chose)
+2. Click "Share" or "Share" button
+3. In the "Add people and groups" field, paste the **service account email**
+   - Find this in the JSON file you downloaded (looks like: `wedding-photos-xxx@your-project-id.iam.gserviceaccount.com`)
+   - It's the value of `client_email` in the JSON
+4. **IMPORTANT**: Change the permission from "Viewer" to **"Editor"**
+5. **UNCHECK** "Notify people" (the service account is not a real person)
+6. Click "Share" or "Send"
+7. You should see the service account email listed under "People with access"
+
+**Verification:**
+- Open your Google Drive folder
+- Click the share icon
+- Verify the service account email is listed with "Editor" access
+- If not, the uploads will fail with "no storage quota" error
 
 ### Step 7: Configure Environment Variables
 

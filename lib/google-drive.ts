@@ -61,8 +61,22 @@ export async function uploadImageToDrive(
     });
 
     return response.data.id!;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error uploading to Google Drive:', error);
+
+    // Provide helpful error messages
+    if (error.message?.includes('storage quota') || error.code === 403) {
+      throw new Error(
+        'Permission denied: Make sure the Google Drive folder is shared with the service account email with "Editor" permissions. Check SETUP_GUIDE.md Step 6.'
+      );
+    }
+
+    if (error.message?.includes('Invalid Credentials')) {
+      throw new Error(
+        'Invalid credentials: Check that GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY are correct in your .env.local file.'
+      );
+    }
+
     throw error;
   }
 }

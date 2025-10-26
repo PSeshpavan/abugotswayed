@@ -133,19 +133,20 @@ Swarna-wedding/
 
 ## Troubleshooting
 
-### "Upload failed"
-→ Check `.env.local` has correct credentials
-→ Verify service account has access to Drive folder
-→ Check Vercel environment variables match exactly
+### ❌ "Service Accounts do not have storage quota" / Upload fails
+→ **Most common issue!** Your Google Drive folder must be shared with the service account
+→ See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for detailed fix
 
 ### "Images not showing in gallery"
 → Check images are in Drive folder
 → Verify folder ID is correct
-→ Check browser console for errors (F12)
+→ See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
 
 ### "QR code not found"
 → Run `npm run generate-qr YOUR_URL` first
 → Check `public/qr-code.png` exists
+
+**For all issues, check [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) first!**
 
 ## Wedding Day Tips
 
