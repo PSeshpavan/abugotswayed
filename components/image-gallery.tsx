@@ -5,6 +5,7 @@ import Image from "next/image";
 import type { MediaData } from "@/types";
 import { Loader2, Play } from "lucide-react";
 import { VideoModal } from "./video-modal";
+import { ImageModal } from "./image-modal";
 
 export function ImageGallery() {
   const [media, setMedia] = useState<MediaData[]>([]);
@@ -13,6 +14,7 @@ export function ImageGallery() {
   const [nextPageToken, setNextPageToken] = useState<string | undefined>();
   const [hasMore, setHasMore] = useState(true);
   const [selectedVideo, setSelectedVideo] = useState<MediaData | null>(null);
+  const [selectedImage, setSelectedImage] = useState<MediaData | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -130,6 +132,12 @@ export function ImageGallery() {
     return `https://drive.google.com/thumbnail?id=${item.id}&sz=w800`;
   };
 
+  const getFullSizeImageUrl = (item: MediaData) => {
+    // Use thumbnail API with large size for reliable loading
+    // sz=w2000 gives us high resolution while ensuring it loads
+    return `https://drive.google.com/thumbnail?id=${item.id}&sz=w2000`;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen px-4">
@@ -162,13 +170,17 @@ export function ImageGallery() {
           {media.map((item, index) => (
             <div
               key={`${item.id}-${index}`}
-              className={`aspect-square relative group overflow-hidden rounded-md sm:rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 bg-muted animate-in fade-in ${
-                item.isVideo ? "cursor-pointer" : ""
-              }`}
+              className="aspect-square relative group overflow-hidden rounded-md sm:rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 bg-muted animate-in fade-in cursor-pointer"
               style={{
                 animationDelay: `${(index % 15) * 50}ms`,
               }}
-              onClick={() => item.isVideo && setSelectedVideo(item)}
+              onClick={() => {
+                if (item.isVideo) {
+                  setSelectedVideo(item);
+                } else {
+                  setSelectedImage(item);
+                }
+              }}
             >
               <Image
                 src={getThumbnailUrl(item)}
@@ -221,6 +233,15 @@ export function ImageGallery() {
         videoName={selectedVideo?.name || ""}
         isOpen={!!selectedVideo}
         onClose={() => setSelectedVideo(null)}
+      />
+
+      {/* Image Modal */}
+      <ImageModal
+        thumbnailUrl={selectedImage ? getThumbnailUrl(selectedImage) : ""}
+        fullSizeUrl={selectedImage ? getFullSizeImageUrl(selectedImage) : ""}
+        imageName={selectedImage?.name || ""}
+        isOpen={!!selectedImage}
+        onClose={() => setSelectedImage(null)}
       />
     </>
   );

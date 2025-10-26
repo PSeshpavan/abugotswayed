@@ -1,23 +1,10 @@
 import { google } from 'googleapis';
 import { Readable } from 'stream';
+import { getOAuth2Client } from './auth';
 
-// Initialize Google Drive API
-const getAuth = () => {
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    },
-    scopes: [
-      'https://www.googleapis.com/auth/drive',
-      'https://www.googleapis.com/auth/drive.file',
-    ],
-  });
-  return auth;
-};
-
-const getDrive = async () => {
-  const auth = getAuth();
+// Initialize Google Drive API with OAuth2 client
+const getDrive = () => {
+  const auth = getOAuth2Client();
   const drive = google.drive({ version: 'v3', auth });
   return drive;
 };
@@ -28,7 +15,7 @@ export async function uploadImageToDrive(
   mimeType: string
 ): Promise<string> {
   try {
-    const drive = await getDrive();
+    const drive = getDrive();
     const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
 
     if (!folderId) {
@@ -40,7 +27,7 @@ export async function uploadImageToDrive(
     bufferStream.push(fileBuffer);
     bufferStream.push(null);
 
-    // Upload file with supportsAllDrives for shared folder compatibility
+    // Upload file to YOUR Drive (in the specified folder)
     const response = await drive.files.create({
       requestBody: {
         name: fileName,
@@ -52,17 +39,15 @@ export async function uploadImageToDrive(
         body: bufferStream,
       },
       fields: 'id, name, webContentLink, thumbnailLink',
-      supportsAllDrives: true,
     });
 
-    // Make the file publicly accessible
+    // Make the file publicly accessible (anyone with link can view)
     await drive.permissions.create({
       fileId: response.data.id!,
       requestBody: {
         role: 'reader',
         type: 'anyone',
       },
-      supportsAllDrives: true,
     });
 
     return response.data.id!;
@@ -70,15 +55,21 @@ export async function uploadImageToDrive(
     console.error('Error uploading to Google Drive:', error);
 
     // Provide helpful error messages
-    if (error.message?.includes('storage quota') || error.code === 403) {
+    if (error.code === 401) {
       throw new Error(
-        'Permission denied: Make sure the Google Drive folder is shared with the service account email with "Editor" permissions. Check SETUP_GUIDE.md Step 6.'
+        'Authentication failed: Please verify your OAuth credentials and refresh token.'
       );
     }
 
-    if (error.message?.includes('Invalid Credentials')) {
+    if (error.code === 403) {
       throw new Error(
-        'Invalid credentials: Check that GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY are correct in your .env.local file.'
+        'Permission denied: Make sure your Google Drive folder exists and is accessible with your account.'
+      );
+    }
+
+    if (error.code === 404) {
+      throw new Error(
+        'Folder not found: Please check the GOOGLE_DRIVE_FOLDER_ID in your environment variables.'
       );
     }
 
@@ -91,7 +82,7 @@ export async function uploadVideoToDrive(
   fileName: string
 ): Promise<string> {
   try {
-    const drive = await getDrive();
+    const drive = getDrive();
     const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
 
     if (!folderId) {
@@ -103,7 +94,7 @@ export async function uploadVideoToDrive(
     bufferStream.push(fileBuffer);
     bufferStream.push(null);
 
-    // Upload file with supportsAllDrives for shared folder compatibility
+    // Upload video to YOUR Drive (in the specified folder)
     const response = await drive.files.create({
       requestBody: {
         name: fileName,
@@ -115,27 +106,30 @@ export async function uploadVideoToDrive(
         body: bufferStream,
       },
       fields: 'id, name, webContentLink, thumbnailLink',
-      supportsAllDrives: true,
     });
 
-    // Make the file publicly accessible
+    // Make the file publicly accessible (anyone with link can view)
     await drive.permissions.create({
       fileId: response.data.id!,
       requestBody: {
         role: 'reader',
         type: 'anyone',
       },
-      supportsAllDrives: true,
     });
 
     return response.data.id!;
   } catch (error: any) {
     console.error('Error uploading video to Google Drive:', error);
 
-    // Provide helpful error messages
-    if (error.message?.includes('storage quota') || error.code === 403) {
+    if (error.code === 401) {
       throw new Error(
-        'Permission denied: Make sure the Google Drive folder is shared with the service account email with "Editor" permissions. Check SETUP_GUIDE.md Step 6.'
+        'Authentication failed: Please verify your OAuth credentials and refresh token.'
+      );
+    }
+
+    if (error.code === 403) {
+      throw new Error(
+        'Permission denied: Make sure your Google Drive folder exists and is accessible with your account.'
       );
     }
 
@@ -152,7 +146,7 @@ export async function getMediaFromDrive(
   hasMore: boolean;
 }> {
   try {
-    const drive = await getDrive();
+    const drive = getDrive();
     const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
 
     if (!folderId) {
@@ -165,8 +159,6 @@ export async function getMediaFromDrive(
       orderBy: 'createdTime desc',
       pageSize: pageSize,
       pageToken: pageToken,
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true,
     });
 
     const files = (response.data.files || []).map((file) => ({
@@ -180,8 +172,13 @@ export async function getMediaFromDrive(
       nextPageToken: response.data.nextPageToken || undefined,
       hasMore,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching media from Google Drive:', error);
+
+    if (error.code === 401) {
+      throw new Error('Authentication failed: Please verify your OAuth credentials and refresh token.');
+    }
+
     throw error;
   }
 }

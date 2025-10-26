@@ -1,90 +1,197 @@
 # Troubleshooting Guide
 
-## Common Issues and Solutions
+## 🔄 IMPORTANT: App Now Uses OAuth 2.0
 
-### ❌ Error: "Service Accounts do not have storage quota"
+**This app has been updated to use OAuth 2.0 authentication instead of service accounts.**
 
-**Cause:** The Google Drive folder is NOT properly shared with the service account, OR the code is missing the `supportsAllDrives` parameter (required for free Gmail accounts).
-
-**Solution (2 Parts):**
-
-#### Part 1: Share the folder correctly
-
-1. Open [Google Drive](https://drive.google.com)
-2. Find your wedding photos folder
-3. Right-click the folder → Click "Share"
-4. Look for your service account email (from the JSON file, e.g., `pavan-631@swarna-wedding.iam.gserviceaccount.com`)
-5. If it's NOT there:
-   - Click "Add people and groups"
-   - Paste the service account email
-   - Change permission to **"Editor"** (not Viewer!)
-   - Uncheck "Notify people"
-   - Click "Share"
-6. If it IS there but says "Viewer":
-   - Click the dropdown next to the email
-   - Change to **"Editor"**
-   - Save
-
-**How to find your service account email:**
-```bash
-# Open your credentials JSON file and look for "client_email"
-cat path/to/your-credentials.json | grep client_email
-```
-
-Or check your `.env.local` file - it's the value of `GOOGLE_CLIENT_EMAIL`.
-
-#### Part 2: Verify supportsAllDrives is enabled
-
-The code has been updated to include `supportsAllDrives: true` in all Google Drive API calls. This is REQUIRED for free Gmail accounts when using shared folders.
-
-**Check that [lib/google-drive.ts](lib/google-drive.ts) includes:**
-- `supportsAllDrives: true` in `drive.files.create()` calls (lines 55, 118)
-- `supportsAllDrives: true` in `drive.permissions.create()` calls (lines 65, 128)
-- `supportsAllDrives: true` and `includeItemsFromAllDrives: true` in `drive.files.list()` call (lines 168-169)
-
-**After making these changes, restart your dev server:**
-```bash
-# Stop the server (Ctrl+C)
-npm run dev
-```
+If you previously set up a service account, you need to switch to OAuth 2.0. See [OAUTH_SETUP_GUIDE.md](OAUTH_SETUP_GUIDE.md) for complete instructions.
 
 ---
 
-### ❌ Upload fails with "Permission denied"
+## Common Issues and Solutions (OAuth 2.0)
+
+### ❌ Error: "Unauthorized: Please sign in to upload files"
+
+**Cause:** You're not signed in with Google.
 
 **Solution:**
-1. Verify the folder is shared with the service account (see above)
-2. Make sure the permission is set to **"Editor"**, not "Viewer"
-3. Double-check the `GOOGLE_DRIVE_FOLDER_ID` in `.env.local` matches your folder
+1. Click the **"Sign in with Google"** button on the homepage
+2. Choose your Google account
+3. Grant permissions when prompted
+4. You should be redirected back to the app
 
-**How to verify folder ID:**
+---
+
+### ❌ Error: "redirect_uri_mismatch"
+
+**Cause:** The OAuth redirect URI doesn't match what's configured in Google Cloud Console.
+
+**Solution:**
+
+1. Look at the full error message - it shows the URI that was attempted
+2. Go to [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
+3. Click your OAuth 2.0 Client ID
+4. Under **"Authorized redirect URIs"**, add the exact URI from the error:
+   - For local: `http://localhost:3000/api/auth/callback/google`
+   - For production: `https://your-app.vercel.app/api/auth/callback/google`
+5. Make sure there are NO trailing slashes
+6. Click **"SAVE"**
+7. Wait 1-2 minutes for changes to propagate
+8. Try signing in again
+
+---
+
+### ❌ Error: "Access blocked: Authorization Error"
+
+**Cause:** OAuth consent screen is not properly configured.
+
+**Solution:**
+
+1. Go to [Google Cloud Console → OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent)
+2. Make sure user type is **"External"**
+3. Verify all required fields are filled:
+   - App name
+   - User support email
+   - Developer contact information
+4. Under **"Scopes"**, make sure these are added:
+   - `https://www.googleapis.com/auth/drive.file`
+   - `openid`
+   - `email`
+   - `profile`
+5. Save changes
+6. Try signing in again
+
+---
+
+### ❌ Sign-in works but upload fails with 403 error
+
+**Cause:** User doesn't have permission to upload to the Google Drive folder.
+
+**Solution:**
+
+Make the folder accessible to all users:
+
+1. Open [Google Drive](https://drive.google.com)
+2. Find your wedding photos folder (ID: `10owBvniraOqfEnnDm_HgIBHsm71h3RnL`)
+3. Right-click → **"Share"**
+4. Click **"Change to anyone with the link"**
+5. Set permission to **"Editor"**
+6. Click **"Done"**
+
+Now anyone who signs in can upload to the folder.
+
+**Alternative (more secure):**
+- Share the folder with specific email addresses
+- Set permission to "Editor" for each user
+
+---
+
+### ❌ Error: "Failed to fetch" when signing in
+
+**Cause:** OAuth credentials are missing or incorrect in environment variables.
+
+**Solution:**
+
+1. Check your `.env.local` file has these variables:
+   ```env
+   GOOGLE_CLIENT_ID=...
+   GOOGLE_CLIENT_SECRET=...
+   AUTH_SECRET=...
+   NEXTAUTH_URL=http://localhost:3000
+   GOOGLE_DRIVE_FOLDER_ID=...
+   ```
+
+2. Verify `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`:
+   - Go to [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
+   - Find your OAuth 2.0 Client ID
+   - Compare the values
+
+3. Generate a new `AUTH_SECRET` if missing:
+   ```bash
+   openssl rand -base64 32
+   ```
+
+4. Restart your dev server:
+   ```bash
+   npm run dev
+   ```
+
+---
+
+### ❌ Sign-in loop (keeps redirecting to Google)
+
+**Cause:** `AUTH_SECRET` is missing, invalid, or not properly configured.
+
+**Solution:**
+
+1. Generate a new secure random secret:
+   ```bash
+   openssl rand -base64 32
+   ```
+
+2. Add it to `.env.local`:
+   ```env
+   AUTH_SECRET=your-generated-secret-here
+   ```
+
+3. Make sure it's at least 32 characters long
+
+4. Restart the dev server:
+   ```bash
+   npm run dev
+   ```
+
+---
+
+### ❌ Error: "NEXTAUTH_URL environment variable is not set"
+
+**Cause:** Missing `NEXTAUTH_URL` in environment variables.
+
+**Solution:**
+
+Add to `.env.local`:
+```env
+NEXTAUTH_URL=http://localhost:3000
+```
+
+For production (Vercel), set:
+```env
+NEXTAUTH_URL=https://your-actual-url.vercel.app
+```
+
+Restart server after changes.
+
+---
+
+### ❌ Upload fails with "Folder not found"
+
+**Cause:** `GOOGLE_DRIVE_FOLDER_ID` is incorrect or missing.
+
+**Solution:**
+
 1. Open your folder in Google Drive
 2. Look at the URL: `https://drive.google.com/drive/folders/FOLDER_ID_HERE`
 3. Copy everything after `/folders/`
-4. Paste it into `.env.local` as `GOOGLE_DRIVE_FOLDER_ID`
+4. Update `.env.local`:
+   ```env
+   GOOGLE_DRIVE_FOLDER_ID=your-folder-id-here
+   ```
+5. For this project, it should be: `10owBvniraOqfEnnDm_HgIBHsm71h3RnL`
 
 ---
 
-### ❌ Error: "Invalid Credentials"
+### ❌ Error: "Invalid Credentials" (old service account error)
 
-**Cause:** The Google API credentials in `.env.local` are incorrect.
+**This error means you're still using the old service account setup.**
 
 **Solution:**
 
-1. Open your downloaded credentials JSON file
-2. Copy the `client_email` value exactly (including the full email)
-3. Copy the `private_key` value exactly (including `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----`)
-4. Update `.env.local`:
-
-```env
-GOOGLE_CLIENT_EMAIL=your-service-account@project-id.iam.gserviceaccount.com
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYour key here\n-----END PRIVATE KEY-----\n"
-```
-
-**Important:**
-- The private key MUST be wrapped in double quotes
-- Keep the `\n` characters (they're important!)
-- Don't remove any part of the key
+You need to switch to OAuth 2.0:
+1. Read [OAUTH_SETUP_GUIDE.md](OAUTH_SETUP_GUIDE.md)
+2. Create OAuth 2.0 credentials in Google Cloud Console
+3. Update your `.env.local` with new variables
+4. Remove old variables (`GOOGLE_CLIENT_EMAIL`, `GOOGLE_PRIVATE_KEY`)
+5. Restart server
 
 ---
 

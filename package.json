@@ -7,16 +7,19 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "generate-qr": "tsx scripts/generate-qr.ts"
+    "generate-qr": "tsx scripts/generate-qr.ts",
+    "setup-oauth": "tsx scripts/setup-oauth.ts"
   },
   "dependencies": {
     "@radix-ui/react-progress": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
     "googleapis": "^164.1.0",
     "lucide-react": "^0.548.0",
     "next": "^15.0.3",
+    "open": "^10.2.0",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
