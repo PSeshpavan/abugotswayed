@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadImageToDrive } from '@/lib/google-drive';
+import { uploadImageToDrive, uploadVideoToDrive } from '@/lib/google-drive';
 import sharp from 'sharp';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB in bytes
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,44 +19,88 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let photosUploaded = 0;
+    let videosUploaded = 0;
+
     // Process and upload files
     const uploadPromises = files.map(async (file) => {
       try {
+        const isVideo = file.type.startsWith('video/');
+        const isImage = file.type.startsWith('image/');
+
+        // Validate file type
+        if (!isImage && !isVideo) {
+          console.error('Unsupported file type:', file.type);
+          return { success: false, type: 'unknown' };
+        }
+
+        // Validate video format (MP4 only)
+        if (isVideo && file.type !== 'video/mp4') {
+          console.error('Only MP4 videos are supported:', file.type);
+          return { success: false, type: 'video' };
+        }
+
+        // Validate video size (100MB limit)
+        if (isVideo && file.size > MAX_VIDEO_SIZE) {
+          console.error('Video too large:', file.size, 'bytes');
+          return { success: false, type: 'video' };
+        }
+
         // Convert file to buffer
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        // Optimize image using sharp
-        const optimizedBuffer = await sharp(buffer)
-          .resize(2000, 2000, {
-            fit: 'inside',
-            withoutEnlargement: true,
-          })
-          .jpeg({ quality: 85, progressive: true })
-          .toBuffer();
-
         // Generate unique filename
         const timestamp = Date.now();
         const randomStr = Math.random().toString(36).substring(7);
-        const fileName = `wedding_${timestamp}_${randomStr}.jpg`;
 
-        // Upload to Google Drive
-        await uploadImageToDrive(optimizedBuffer, fileName, 'image/jpeg');
+        if (isVideo) {
+          // Upload video directly (no processing for performance)
+          const fileName = `wedding_${timestamp}_${randomStr}.mp4`;
+          await uploadVideoToDrive(buffer, fileName);
+          return { success: true, type: 'video' };
+        } else {
+          // Optimize image using sharp
+          const optimizedBuffer = await sharp(buffer)
+            .resize(2000, 2000, {
+              fit: 'inside',
+              withoutEnlargement: true,
+            })
+            .jpeg({ quality: 85, progressive: true })
+            .toBuffer();
 
-        return { success: true };
+          const fileName = `wedding_${timestamp}_${randomStr}.jpg`;
+          await uploadImageToDrive(optimizedBuffer, fileName, 'image/jpeg');
+          return { success: true, type: 'image' };
+        }
       } catch (error) {
         console.error('Error processing file:', error);
-        return { success: false };
+        return { success: false, type: 'unknown' };
       }
     });
 
     const results = await Promise.all(uploadPromises);
     const successCount = results.filter((r) => r.success).length;
+    photosUploaded = results.filter((r) => r.success && r.type === 'image').length;
+    videosUploaded = results.filter((r) => r.success && r.type === 'video').length;
+
+    let message = '';
+    if (photosUploaded > 0 && videosUploaded > 0) {
+      message = `Successfully uploaded ${photosUploaded} photo${photosUploaded > 1 ? 's' : ''} and ${videosUploaded} video${videosUploaded > 1 ? 's' : ''}`;
+    } else if (photosUploaded > 0) {
+      message = `Successfully uploaded ${photosUploaded} photo${photosUploaded > 1 ? 's' : ''}`;
+    } else if (videosUploaded > 0) {
+      message = `Successfully uploaded ${videosUploaded} video${videosUploaded > 1 ? 's' : ''}`;
+    } else {
+      message = 'No files were uploaded';
+    }
 
     return NextResponse.json({
-      success: true,
-      message: `Successfully uploaded ${successCount} out of ${files.length} images`,
+      success: successCount > 0,
+      message,
       filesUploaded: successCount,
+      photosUploaded,
+      videosUploaded,
     });
   } catch (error) {
     console.error('Upload error:', error);

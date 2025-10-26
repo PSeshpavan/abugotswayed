@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getImagesFromDrive } from '@/lib/google-drive';
-import type { ImagesResponse } from '@/types';
+import { getMediaFromDrive } from '@/lib/google-drive';
+import type { MediaResponse } from '@/types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -11,10 +11,10 @@ export async function GET(request: NextRequest) {
     const pageToken = searchParams.get('pageToken') || undefined;
     const pageSize = parseInt(searchParams.get('pageSize') || '15');
 
-    const result = await getImagesFromDrive(pageSize, pageToken);
+    const result = await getMediaFromDrive(pageSize, pageToken);
 
-    const response: ImagesResponse = {
-      images: result.images,
+    const response: MediaResponse = {
+      media: result.media,
       nextPageToken: result.nextPageToken,
       hasMore: result.hasMore,
     };
@@ -27,9 +27,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error fetching images:', error);
+    console.error('Error fetching media:', error);
     return NextResponse.json(
-      { images: [], hasMore: false, error: 'Failed to fetch images' },
+      { media: [], hasMore: false, error: 'Failed to fetch media' },
       { status: 500 }
     );
   }

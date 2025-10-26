@@ -2,15 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
-import type { ImageData } from "@/types";
-import { Loader2 } from "lucide-react";
+import type { MediaData } from "@/types";
+import { Loader2, Play } from "lucide-react";
+import { VideoModal } from "./video-modal";
 
 export function ImageGallery() {
-  const [images, setImages] = useState<ImageData[]>([]);
+  const [media, setMedia] = useState<MediaData[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextPageToken, setNextPageToken] = useState<string | undefined>();
   const [hasMore, setHasMore] = useState(true);
+  const [selectedVideo, setSelectedVideo] = useState<MediaData | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -27,11 +29,11 @@ export function ImageGallery() {
       const data = await response.json();
 
       if (pageToken) {
-        // Append to existing images
-        setImages((prev) => [...prev, ...data.images]);
+        // Append to existing media
+        setMedia((prev) => [...prev, ...(data.media || data.images || [])]);
       } else {
-        // Replace with new images
-        setImages(data.images);
+        // Replace with new media
+        setMedia(data.media || data.images || []);
       }
 
       setNextPageToken(data.nextPageToken);
@@ -60,25 +62,26 @@ export function ImageGallery() {
       });
       const data = await response.json();
 
-      // Check if there are new images
-      if (data.images.length > 0) {
-        const latestImageId = data.images[0].id;
-        const currentLatestId = images[0]?.id;
+      // Check if there are new media items
+      const newMedia = data.media || data.images || [];
+      if (newMedia.length > 0) {
+        const latestId = newMedia[0].id;
+        const currentLatestId = media[0]?.id;
 
-        if (latestImageId !== currentLatestId) {
-          // New images available, prepend them
-          const newImages = data.images.filter(
-            (img: ImageData) => !images.some((existing) => existing.id === img.id)
+        if (latestId !== currentLatestId) {
+          // New media available, prepend them
+          const newItems = newMedia.filter(
+            (item: MediaData) => !media.some((existing) => existing.id === item.id)
           );
-          if (newImages.length > 0) {
-            setImages((prev) => [...newImages, ...prev]);
+          if (newItems.length > 0) {
+            setMedia((prev) => [...newItems, ...prev]);
           }
         }
       }
     }, 10000); // Poll every 10 seconds
 
     return () => clearInterval(pollInterval);
-  }, [images]);
+  }, [media]);
 
   // Load more images
   const loadMore = useCallback(async () => {
@@ -115,9 +118,16 @@ export function ImageGallery() {
     };
   }, [hasMore, loadingMore, loadMore]);
 
-  // Get optimized image URL
-  const getImageUrl = (image: ImageData) => {
-    return `https://drive.google.com/thumbnail?id=${image.id}&sz=w800`;
+  // Get optimized media URL
+  const getMediaUrl = (item: MediaData) => {
+    if (item.isVideo) {
+      return `https://drive.google.com/uc?export=download&id=${item.id}`;
+    }
+    return `https://drive.google.com/thumbnail?id=${item.id}&sz=w800`;
+  };
+
+  const getThumbnailUrl = (item: MediaData) => {
+    return `https://drive.google.com/thumbnail?id=${item.id}&sz=w800`;
   };
 
   if (loading) {
@@ -131,7 +141,7 @@ export function ImageGallery() {
     );
   }
 
-  if (images.length === 0) {
+  if (media.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen px-4">
         <div className="text-center space-y-4 max-w-md">
@@ -146,29 +156,42 @@ export function ImageGallery() {
   }
 
   return (
-    <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
-        {images.map((image, index) => (
-          <div
-            key={`${image.id}-${index}`}
-            className="aspect-square relative group overflow-hidden rounded-md sm:rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 bg-muted animate-in fade-in"
-            style={{
-              animationDelay: `${(index % 15) * 50}ms`,
-            }}
-          >
-            <Image
-              src={getImageUrl(image)}
-              alt={image.name}
-              fill
-              sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 16.66vw"
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
-              loading="lazy"
-              unoptimized
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          </div>
-        ))}
-      </div>
+    <>
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
+          {media.map((item, index) => (
+            <div
+              key={`${item.id}-${index}`}
+              className={`aspect-square relative group overflow-hidden rounded-md sm:rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 bg-muted animate-in fade-in ${
+                item.isVideo ? "cursor-pointer" : ""
+              }`}
+              style={{
+                animationDelay: `${(index % 15) * 50}ms`,
+              }}
+              onClick={() => item.isVideo && setSelectedVideo(item)}
+            >
+              <Image
+                src={getThumbnailUrl(item)}
+                alt={item.name}
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 16.66vw"
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                loading="lazy"
+                unoptimized
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+              {/* Play button overlay for videos */}
+              {item.isVideo && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="bg-black/60 rounded-full p-3 sm:p-4 group-hover:bg-black/80 group-hover:scale-110 transition-all duration-300">
+                    <Play className="w-8 h-8 sm:w-10 sm:h-10 text-white fill-white" />
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
 
       {/* Load more trigger */}
       {hasMore && (
@@ -185,11 +208,20 @@ export function ImageGallery() {
         </div>
       )}
 
-      {!hasMore && images.length > 0 && (
-        <div className="text-center py-6 sm:py-8 text-muted-foreground">
-          <p className="text-sm sm:text-base">You&apos;ve seen all the memories!</p>
-        </div>
-      )}
-    </div>
+        {!hasMore && media.length > 0 && (
+          <div className="text-center py-6 sm:py-8 text-muted-foreground">
+            <p className="text-sm sm:text-base">You&apos;ve seen all the memories!</p>
+          </div>
+        )}
+      </div>
+
+      {/* Video Modal */}
+      <VideoModal
+        videoUrl={selectedVideo ? getMediaUrl(selectedVideo) : ""}
+        videoName={selectedVideo?.name || ""}
+        isOpen={!!selectedVideo}
+        onClose={() => setSelectedVideo(null)}
+      />
+    </>
   );
 }

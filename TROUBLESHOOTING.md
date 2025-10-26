@@ -4,14 +4,16 @@
 
 ### ❌ Error: "Service Accounts do not have storage quota"
 
-**Cause:** The Google Drive folder is NOT properly shared with the service account.
+**Cause:** The Google Drive folder is NOT properly shared with the service account, OR the code is missing the `supportsAllDrives` parameter (required for free Gmail accounts).
 
-**Solution:**
+**Solution (2 Parts):**
+
+#### Part 1: Share the folder correctly
 
 1. Open [Google Drive](https://drive.google.com)
 2. Find your wedding photos folder
 3. Right-click the folder → Click "Share"
-4. Look for your service account email (from the JSON file, e.g., `wedding-photos@project-id.iam.gserviceaccount.com`)
+4. Look for your service account email (from the JSON file, e.g., `pavan-631@swarna-wedding.iam.gserviceaccount.com`)
 5. If it's NOT there:
    - Click "Add people and groups"
    - Paste the service account email
@@ -30,6 +32,21 @@ cat path/to/your-credentials.json | grep client_email
 ```
 
 Or check your `.env.local` file - it's the value of `GOOGLE_CLIENT_EMAIL`.
+
+#### Part 2: Verify supportsAllDrives is enabled
+
+The code has been updated to include `supportsAllDrives: true` in all Google Drive API calls. This is REQUIRED for free Gmail accounts when using shared folders.
+
+**Check that [lib/google-drive.ts](lib/google-drive.ts) includes:**
+- `supportsAllDrives: true` in `drive.files.create()` calls (lines 55, 118)
+- `supportsAllDrives: true` in `drive.permissions.create()` calls (lines 65, 128)
+- `supportsAllDrives: true` and `includeItemsFromAllDrives: true` in `drive.files.list()` call (lines 168-169)
+
+**After making these changes, restart your dev server:**
+```bash
+# Stop the server (Ctrl+C)
+npm run dev
+```
 
 ---
 

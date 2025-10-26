@@ -10,7 +10,7 @@ export default function GalleryPage() {
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent truncate">
-              Wedding Memories
+              #AbuGotSwayed
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 hidden sm:block">
               Celebrating love, one photo at a time

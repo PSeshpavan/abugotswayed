@@ -53,12 +53,11 @@ Error: Service Accounts do not have storage quota
 ```
 
 ### The Root Cause:
-**Google service accounts don't have their own storage.** They need to upload to a folder that's owned by a regular Google account (YOUR account) and shared with the service account.
+**Google service accounts don't have their own storage.** They need to upload to a folder that's owned by a regular Google account (YOUR account) and shared with the service account. Additionally, when using free Gmail accounts with shared folders, the Google Drive API requires the `supportsAllDrives` parameter.
 
-### The Solution:
-You MUST share your Google Drive folder with the service account email with **"Editor"** permissions.
+### The Solution (2 Parts):
 
-#### Step-by-Step Fix:
+#### Part 1: Share the folder with your service account
 
 1. **Open [Google Drive](https://drive.google.com)**
 
@@ -69,7 +68,7 @@ You MUST share your Google Drive folder with the service account email with **"E
 4. **Add the service account email:**
    - Look in your `.env.local` file for `GOOGLE_CLIENT_EMAIL`
    - Or open your credentials JSON file and find `client_email`
-   - Example: `wedding-photos@your-project.iam.gserviceaccount.com`
+   - Example: `pavan-631@swarna-wedding.iam.gserviceaccount.com`
 
 5. **Paste this email in the "Add people and groups" field**
 
@@ -83,11 +82,20 @@ You MUST share your Google Drive folder with the service account email with **"E
    - The service account email should now appear under "People with access"
    - It should show "Editor" permission
 
+#### Part 2: Enable shared drive support (ALREADY DONE)
+
+I've updated the code to include `supportsAllDrives: true` in all Google Drive API calls. This tells the API to work with shared folders properly, which is required for free Gmail accounts.
+
+Changes made in [lib/google-drive.ts](lib/google-drive.ts):
+- Added `supportsAllDrives: true` to all `drive.files.create()` calls
+- Added `supportsAllDrives: true` to all `drive.permissions.create()` calls
+- Added `supportsAllDrives: true` and `includeItemsFromAllDrives: true` to `drive.files.list()` calls
+
 ### What Happens After Fixing:
-- Images will be uploaded to YOUR Google Drive (using YOUR storage quota)
+- Images and videos will be uploaded to YOUR Google Drive (using YOUR storage quota)
 - The service account has permission to write to your folder
-- Your wedding guests can upload photos successfully!
-- Images will appear in the gallery in real-time
+- Your wedding guests can upload photos and videos successfully!
+- Media will appear in the gallery in real-time
 
 ---
 

@@ -18,17 +18,29 @@ export function UploadForm() {
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
-    const imageFiles = selectedFiles.filter((file) =>
-      file.type.startsWith("image/")
-    );
-    setFiles(imageFiles);
+    const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+
+    const validFiles = selectedFiles.filter((file) => {
+      const isImage = file.type.startsWith("image/");
+      const isVideo = file.type === "video/mp4";
+
+      // Check if video is too large
+      if (isVideo && file.size > MAX_VIDEO_SIZE) {
+        alert(`Video "${file.name}" is too large. Maximum size is 100MB.`);
+        return false;
+      }
+
+      return isImage || isVideo;
+    });
+
+    setFiles(validFiles);
     setUploadStatus("idle");
   };
 
   const handleUpload = async () => {
     if (files.length === 0) {
       setUploadStatus("error");
-      setStatusMessage("Please select at least one image");
+      setStatusMessage("Please select at least one file");
       return;
     }
 
@@ -103,7 +115,7 @@ export function UploadForm() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/mp4"
             multiple
             onChange={handleFileSelect}
             className="hidden"
@@ -115,11 +127,11 @@ export function UploadForm() {
             <div>
               <p className="text-base sm:text-lg font-medium">
                 {files.length > 0
-                  ? `${files.length} image${files.length > 1 ? "s" : ""} selected`
-                  : "Click to select images"}
+                  ? `${files.length} file${files.length > 1 ? "s" : ""} selected`
+                  : "Click to select photos or videos"}
               </p>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                Select multiple images to upload
+                Photos and MP4 videos (max 100MB)
               </p>
             </div>
           </div>
@@ -127,19 +139,39 @@ export function UploadForm() {
 
         {files.length > 0 && (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-            {files.slice(0, 10).map((file, index) => (
-              <div
-                key={index}
-                className="aspect-square rounded-lg overflow-hidden border-2 border-primary/20"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={URL.createObjectURL(file)}
-                  alt={`Preview ${index + 1}`}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ))}
+            {files.slice(0, 10).map((file, index) => {
+              const isVideo = file.type.startsWith("video/");
+              return (
+                <div
+                  key={index}
+                  className="aspect-square rounded-lg overflow-hidden border-2 border-primary/20 relative"
+                >
+                  {isVideo ? (
+                    <div className="w-full h-full bg-muted flex items-center justify-center">
+                      <div className="text-center">
+                        <svg
+                          className="w-12 h-12 mx-auto text-primary/70"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
+                        </svg>
+                        <p className="text-xs text-muted-foreground mt-1">Video</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </>
+                  )}
+                </div>
+              );
+            })}
             {files.length > 10 && (
               <div className="aspect-square rounded-lg overflow-hidden border-2 border-primary/20 bg-primary/10 flex items-center justify-center">
                 <span className="text-sm font-medium">+{files.length - 10}</span>
@@ -182,7 +214,7 @@ export function UploadForm() {
             size="lg"
           >
             <Upload className="w-4 h-4 mr-2" />
-            <span className="text-sm sm:text-base">{uploading ? "Uploading..." : "Upload Photos"}</span>
+            <span className="text-sm sm:text-base">{uploading ? "Uploading..." : "Upload"}</span>
           </Button>
           <Button
             onClick={handleSkip}
