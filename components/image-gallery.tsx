@@ -123,12 +123,18 @@ export function ImageGallery() {
   // Get optimized media URL
   const getMediaUrl = (item: MediaData) => {
     if (item.isVideo) {
-      return `https://drive.google.com/uc?export=download&id=${item.id}`;
+      // Use our API endpoint to stream video with authentication
+      return `/api/video/${item.id}`;
     }
     return `https://drive.google.com/thumbnail?id=${item.id}&sz=w800`;
   };
 
   const getThumbnailUrl = (item: MediaData) => {
+    // For videos, use Google Drive's auto-generated thumbnail
+    // For images, use thumbnail API with controlled size
+    if (item.isVideo && item.thumbnailLink) {
+      return item.thumbnailLink;
+    }
     return `https://drive.google.com/thumbnail?id=${item.id}&sz=w800`;
   };
 

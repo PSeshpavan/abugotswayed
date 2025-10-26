@@ -18,7 +18,7 @@ export function UploadForm() {
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
-    const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+    const MAX_VIDEO_SIZE = 250 * 1024 * 1024; // 250MB
 
     const validFiles = selectedFiles.filter((file) => {
       const isImage = file.type.startsWith("image/");
@@ -26,7 +26,7 @@ export function UploadForm() {
 
       // Check if video is too large
       if (isVideo && file.size > MAX_VIDEO_SIZE) {
-        alert(`Video "${file.name}" is too large. Maximum size is 100MB.`);
+        alert(`Video "${file.name}" is too large. Maximum size is 250MB.`);
         return false;
       }
 
@@ -131,7 +131,7 @@ export function UploadForm() {
                   : "Click to select photos or videos"}
               </p>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                Photos and MP4 videos (max 100MB)
+                Photos and MP4 videos (max 250MB)
               </p>
             </div>
           </div>

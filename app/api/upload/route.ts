@@ -5,7 +5,7 @@ import sharp from 'sharp';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB in bytes
+const MAX_VIDEO_SIZE = 250 * 1024 * 1024; // 250MB in bytes
 
 export async function POST(request: NextRequest) {
   try {
