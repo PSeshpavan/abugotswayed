@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Upload, Image as ImageIcon, CheckCircle2, XCircle } from "lucide-react";
+import { Upload, Image as ImageIcon, CheckCircle2, XCircle, X } from "lucide-react";
 
 export function UploadForm() {
   const [files, setFiles] = useState<File[]>([]);
@@ -35,6 +35,10 @@ export function UploadForm() {
 
     setFiles(validFiles);
     setUploadStatus("idle");
+  };
+
+  const handleDeleteFile = (indexToDelete: number) => {
+    setFiles((prevFiles) => prevFiles.filter((_, index) => index !== indexToDelete));
   };
 
   const handleUpload = async () => {
@@ -144,10 +148,22 @@ export function UploadForm() {
               return (
                 <div
                   key={index}
-                  className="aspect-square rounded-lg overflow-hidden border-2 border-primary/20 relative"
+                  className="aspect-square rounded-lg border-2 border-primary/20 relative"
                 >
+                  {/* Delete button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteFile(index);
+                    }}
+                    className="absolute -top-1 -right-1 z-10 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-lg transition-all hover:scale-110"
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    <X className="w-3 h-3 sm:w-4 sm:h-4" />
+                  </button>
+
                   {isVideo ? (
-                    <div className="w-full h-full bg-muted flex items-center justify-center">
+                    <div className="w-full h-full bg-muted flex items-center justify-center rounded-lg overflow-hidden">
                       <div className="text-center">
                         <svg
                           className="w-12 h-12 mx-auto text-primary/70"
@@ -165,7 +181,7 @@ export function UploadForm() {
                       <img
                         src={URL.createObjectURL(file)}
                         alt={`Preview ${index + 1}`}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover rounded-lg overflow-hidden"
                       />
                     </>
                   )}
