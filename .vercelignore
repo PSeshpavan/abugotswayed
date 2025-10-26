@@ -1,0 +1,4 @@
+scripts/
+SETUP_GUIDE.md
+*.md
+.env.example
