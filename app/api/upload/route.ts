@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadImageToDrive, uploadVideoToDrive } from '@/lib/google-drive';
 import sharp from 'sharp';
+import { Readable } from 'stream';
+
+const fileToNodeStream = (file: File) =>
+  Readable.fromWeb(file.stream() as any);
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -40,15 +44,11 @@ export async function POST(request: NextRequest) {
           return { success: false, type: 'video' };
         }
 
-        // Validate video size (100MB limit)
+        // Validate video size (250MB limit)
         if (isVideo && file.size > MAX_VIDEO_SIZE) {
           console.error('Video too large:', file.size, 'bytes');
           return { success: false, type: 'video' };
         }
-
-        // Convert file to buffer
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
 
         // Generate unique filename
         const timestamp = Date.now();
@@ -57,20 +57,23 @@ export async function POST(request: NextRequest) {
         if (isVideo) {
           // Upload video directly (no processing for performance)
           const fileName = `wedding_${timestamp}_${randomStr}.mp4`;
-          await uploadVideoToDrive(buffer, fileName);
+          const videoStream = fileToNodeStream(file);
+          await uploadVideoToDrive(videoStream, fileName, file.type, file.size);
           return { success: true, type: 'video' };
         } else {
           // Optimize image using sharp
-          const optimizedBuffer = await sharp(buffer)
-            .resize(2000, 2000, {
-              fit: 'inside',
-              withoutEnlargement: true,
-            })
-            .jpeg({ quality: 85, progressive: true })
-            .toBuffer();
+          const fileStream = fileToNodeStream(file);
+          const optimizedStream = fileStream.pipe(
+            sharp()
+              .resize(2000, 2000, {
+                fit: 'inside',
+                withoutEnlargement: true,
+              })
+              .jpeg({ quality: 85, progressive: true })
+          );
 
           const fileName = `wedding_${timestamp}_${randomStr}.jpg`;
-          await uploadImageToDrive(optimizedBuffer, fileName, 'image/jpeg');
+          await uploadImageToDrive(optimizedStream, fileName, 'image/jpeg');
           return { success: true, type: 'image' };
         }
       } catch (error) {

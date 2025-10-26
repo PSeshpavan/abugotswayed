@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
-import { Readable } from 'stream';
 import { getOAuth2Client } from './auth';
+import { Readable } from 'stream';
 
 // Initialize Google Drive API with OAuth2 client
 const getDrive = () => {
@@ -9,10 +9,33 @@ const getDrive = () => {
   return drive;
 };
 
+type UploadBody = Buffer | NodeJS.ReadableStream;
+
+const toReadable = (body: UploadBody) => {
+  if (Buffer.isBuffer(body)) {
+    const bufferStream = new Readable();
+    bufferStream.push(body);
+    bufferStream.push(null);
+    return bufferStream;
+  }
+  return body;
+};
+
+const createUploadHeaders = (size?: number) => {
+  if (!size && size !== 0) {
+    return undefined;
+  }
+
+  return {
+    'X-Upload-Content-Length': size.toString(),
+  };
+};
+
 export async function uploadImageToDrive(
-  fileBuffer: Buffer,
+  fileBody: UploadBody,
   fileName: string,
-  mimeType: string
+  mimeType: string,
+  fileSize?: number
 ): Promise<string> {
   try {
     const drive = getDrive();
@@ -22,24 +45,27 @@ export async function uploadImageToDrive(
       throw new Error('Google Drive folder ID not configured');
     }
 
-    // Create a readable stream from buffer
-    const bufferStream = new Readable();
-    bufferStream.push(fileBuffer);
-    bufferStream.push(null);
-
     // Upload file to YOUR Drive (in the specified folder)
-    const response = await drive.files.create({
-      requestBody: {
-        name: fileName,
-        parents: [folderId],
-        mimeType: mimeType,
+    const response = await drive.files.create(
+      {
+        requestBody: {
+          name: fileName,
+          parents: [folderId],
+          mimeType: mimeType,
+        },
+        media: {
+          mimeType: mimeType,
+          body: toReadable(fileBody),
+        },
+        fields: 'id, name, webContentLink, thumbnailLink',
+        uploadType: 'resumable',
       },
-      media: {
-        mimeType: mimeType,
-        body: bufferStream,
-      },
-      fields: 'id, name, webContentLink, thumbnailLink',
-    });
+      {
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+        headers: createUploadHeaders(fileSize),
+      }
+    );
 
     // Make the file publicly accessible (anyone with link can view)
     await drive.permissions.create({
@@ -78,8 +104,10 @@ export async function uploadImageToDrive(
 }
 
 export async function uploadVideoToDrive(
-  fileBuffer: Buffer,
-  fileName: string
+  fileBody: UploadBody,
+  fileName: string,
+  mimeType: string = 'video/mp4',
+  fileSize?: number
 ): Promise<string> {
   try {
     const drive = getDrive();
@@ -89,24 +117,27 @@ export async function uploadVideoToDrive(
       throw new Error('Google Drive folder ID not configured');
     }
 
-    // Create a readable stream from buffer
-    const bufferStream = new Readable();
-    bufferStream.push(fileBuffer);
-    bufferStream.push(null);
-
     // Upload video to YOUR Drive (in the specified folder)
-    const response = await drive.files.create({
-      requestBody: {
-        name: fileName,
-        parents: [folderId],
-        mimeType: 'video/mp4',
+    const response = await drive.files.create(
+      {
+        requestBody: {
+          name: fileName,
+          parents: [folderId],
+          mimeType,
+        },
+        media: {
+          mimeType,
+          body: toReadable(fileBody),
+        },
+        fields: 'id, name, webContentLink, thumbnailLink',
+        uploadType: 'resumable',
       },
-      media: {
-        mimeType: 'video/mp4',
-        body: bufferStream,
-      },
-      fields: 'id, name, webContentLink, thumbnailLink',
-    });
+      {
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+        headers: createUploadHeaders(fileSize),
+      }
+    );
 
     // Make the file publicly accessible (anyone with link can view)
     await drive.permissions.create({
