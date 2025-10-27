@@ -21,16 +21,6 @@ const toReadable = (body: UploadBody) => {
   return body;
 };
 
-const createUploadHeaders = (size?: number) => {
-  if (!size && size !== 0) {
-    return undefined;
-  }
-
-  return {
-    'X-Upload-Content-Length': size.toString(),
-  };
-};
-
 export async function uploadImageToDrive(
   fileBody: UploadBody,
   fileName: string,
@@ -46,26 +36,19 @@ export async function uploadImageToDrive(
     }
 
     // Upload file to YOUR Drive (in the specified folder)
-    const response = await drive.files.create(
-      {
-        requestBody: {
-          name: fileName,
-          parents: [folderId],
-          mimeType: mimeType,
-        },
-        media: {
-          mimeType: mimeType,
-          body: toReadable(fileBody),
-        },
-        fields: 'id, name, webContentLink, thumbnailLink',
-        uploadType: 'resumable',
+    const response = await drive.files.create({
+      requestBody: {
+        name: fileName,
+        parents: [folderId],
+        mimeType: mimeType,
       },
-      {
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity,
-        headers: createUploadHeaders(fileSize),
-      }
-    );
+      media: {
+        mimeType: mimeType,
+        body: toReadable(fileBody),
+      },
+      fields: 'id, name, webContentLink, thumbnailLink',
+      uploadType: 'resumable',
+    });
 
     // Make the file publicly accessible (anyone with link can view)
     await drive.permissions.create({
@@ -118,26 +101,19 @@ export async function uploadVideoToDrive(
     }
 
     // Upload video to YOUR Drive (in the specified folder)
-    const response = await drive.files.create(
-      {
-        requestBody: {
-          name: fileName,
-          parents: [folderId],
-          mimeType,
-        },
-        media: {
-          mimeType,
-          body: toReadable(fileBody),
-        },
-        fields: 'id, name, webContentLink, thumbnailLink',
-        uploadType: 'resumable',
+    const response = await drive.files.create({
+      requestBody: {
+        name: fileName,
+        parents: [folderId],
+        mimeType,
       },
-      {
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity,
-        headers: createUploadHeaders(fileSize),
-      }
-    );
+      media: {
+        mimeType,
+        body: toReadable(fileBody),
+      },
+      fields: 'id, name, webContentLink, thumbnailLink',
+      uploadType: 'resumable',
+    });
 
     // Make the file publicly accessible (anyone with link can view)
     await drive.permissions.create({
