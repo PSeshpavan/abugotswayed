@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Upload, Image as ImageIcon, CheckCircle2, XCircle, X } from "lucide-react";
 import { compressImages } from "@/lib/image-compression";
+import { uploadFilesInChunks } from "@/lib/chunked-upload";
 
 export function UploadForm() {
   const [files, setFiles] = useState<File[]>([]);
@@ -54,57 +55,59 @@ export function UploadForm() {
     setUploadProgress(0);
 
     try {
-      // Step 1: Compress images (20% of progress)
+      // Step 1: Compress images (10% of progress)
       setCompressing(true);
       setStatusMessage("Optimizing images...");
 
       const compressedFiles = await compressImages(files, (current, total) => {
-        const compressProgress = Math.floor((current / total) * 20);
+        const compressProgress = Math.floor((current / total) * 10);
         setUploadProgress(compressProgress);
       });
 
       setCompressing(false);
-      setStatusMessage("Uploading files...");
 
-      // Step 2: Upload files (80% of progress)
-      const formData = new FormData();
-      compressedFiles.forEach((file) => {
-        formData.append("files", file);
-      });
+      // Step 2: Upload files using chunked upload (90% of progress)
+      const result = await uploadFilesInChunks(
+        compressedFiles,
+        (currentFile, totalFiles, fileProgress) => {
+          // Calculate overall progress
+          const filesCompleted = currentFile - 1;
+          const filesProgress = (filesCompleted / totalFiles) * 90;
+          const currentFileProgress = (fileProgress.progress / 100) * (90 / totalFiles);
+          const overallProgress = 10 + filesProgress + currentFileProgress;
 
-      // Simulate upload progress
-      let progress = 20;
-      const progressInterval = setInterval(() => {
-        progress += 5;
-        if (progress <= 90) {
-          setUploadProgress(progress);
+          setUploadProgress(Math.floor(overallProgress));
+          setStatusMessage(
+            `Uploading ${currentFile}/${totalFiles}: ${fileProgress.fileName} (${fileProgress.progress}%)`
+          );
         }
-      }, 500);
+      );
 
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      clearInterval(progressInterval);
-      setUploadProgress(100);
-
-      const data = await response.json();
-
-      if (data.success) {
+      if (result.success) {
+        setUploadProgress(100);
         setUploadStatus("success");
-        setStatusMessage(data.message);
+
+        let message = '';
+        if (result.uploadedCount > 0 && result.failedCount > 0) {
+          message = `Successfully uploaded ${result.uploadedCount} file${result.uploadedCount > 1 ? 's' : ''}. ${result.failedCount} failed.`;
+        } else if (result.uploadedCount > 0) {
+          message = `Successfully uploaded ${result.uploadedCount} file${result.uploadedCount > 1 ? 's' : ''}!`;
+        } else {
+          message = 'No files were uploaded';
+        }
+
+        setStatusMessage(message);
         setTimeout(() => {
           router.push("/gallery");
         }, 1500);
       } else {
         setUploadStatus("error");
-        setStatusMessage(data.message || "Upload failed");
+        setStatusMessage(`Upload failed. ${result.uploadedCount} succeeded, ${result.failedCount} failed.`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload error:", error);
       setUploadStatus("error");
-      setStatusMessage("Failed to upload images. Please try again.");
+      setStatusMessage(error.message || "Failed to upload. Please try again.");
     } finally {
       setUploading(false);
       setCompressing(false);

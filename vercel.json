@@ -3,6 +3,17 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
+  "functions": {
+    "app/api/upload-chunk/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/finalize-upload/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/video/[fileId]/route.ts": {
+      "maxDuration": 60
+    }
+  },
   "headers": [
     {
       "source": "/api/(.*)",
