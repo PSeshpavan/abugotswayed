@@ -38,9 +38,9 @@ export async function POST(request: NextRequest) {
           return { success: false, type: 'unknown' };
         }
 
-        // Validate video format (MP4 only)
-        if (isVideo && file.type !== 'video/mp4') {
-          console.error('Only MP4 videos are supported:', file.type);
+        // Validate video format (MP4 and common mobile formats)
+        if (isVideo && !['video/mp4', 'video/quicktime', 'video/x-m4v'].includes(file.type)) {
+          console.error('Unsupported video format:', file.type);
           return { success: false, type: 'video' };
         }
 
@@ -56,7 +56,16 @@ export async function POST(request: NextRequest) {
 
         if (isVideo) {
           // Upload video directly (no processing for performance)
-          const fileName = `wedding_${timestamp}_${randomStr}.mp4`;
+          // Determine extension based on mime type
+          let extension = 'mp4';
+          if (file.type === 'video/quicktime') extension = 'mov';
+          else if (file.type === 'video/x-m4v') extension = 'm4v';
+          else if (file.name.includes('.')) {
+            const fileExt = file.name.split('.').pop()?.toLowerCase();
+            if (fileExt) extension = fileExt;
+          }
+
+          const fileName = `wedding_${timestamp}_${randomStr}.${extension}`;
           const videoStream = fileToNodeStream(file);
           await uploadVideoToDrive(videoStream, fileName, file.type, file.size);
           return { success: true, type: 'video' };

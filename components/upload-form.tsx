@@ -24,7 +24,7 @@ export function UploadForm() {
 
     const validFiles = selectedFiles.filter((file) => {
       const isImage = file.type.startsWith("image/");
-      const isVideo = file.type === "video/mp4";
+      const isVideo = file.type.startsWith("video/");
 
       // Check if video is too large
       if (isVideo && file.size > MAX_VIDEO_SIZE) {
@@ -133,7 +133,7 @@ export function UploadForm() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*,video/mp4"
+            accept="image/*,video/*"
             multiple
             onChange={handleFileSelect}
             className="hidden"
@@ -149,7 +149,7 @@ export function UploadForm() {
                   : "Click to select photos or videos"}
               </p>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                Photos and MP4 videos (max 250MB)
+                Photos and videos (max 250MB for videos)
               </p>
             </div>
           </div>
