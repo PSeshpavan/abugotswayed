@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Upload, Image as ImageIcon, CheckCircle2, XCircle, X } from "lucide-react";
+import { compressImages } from "@/lib/image-compression";
 
 export function UploadForm() {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [compressing, setCompressing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle");
   const [statusMessage, setStatusMessage] = useState("");
@@ -52,21 +54,32 @@ export function UploadForm() {
     setUploadProgress(0);
 
     try {
+      // Step 1: Compress images (20% of progress)
+      setCompressing(true);
+      setStatusMessage("Optimizing images...");
+
+      const compressedFiles = await compressImages(files, (current, total) => {
+        const compressProgress = Math.floor((current / total) * 20);
+        setUploadProgress(compressProgress);
+      });
+
+      setCompressing(false);
+      setStatusMessage("Uploading files...");
+
+      // Step 2: Upload files (80% of progress)
       const formData = new FormData();
-      files.forEach((file) => {
+      compressedFiles.forEach((file) => {
         formData.append("files", file);
       });
 
-      // Simulate progress
+      // Simulate upload progress
+      let progress = 20;
       const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 300);
+        progress += 5;
+        if (progress <= 90) {
+          setUploadProgress(progress);
+        }
+      }, 500);
 
       const response = await fetch("/api/upload", {
         method: "POST",
@@ -94,6 +107,7 @@ export function UploadForm() {
       setStatusMessage("Failed to upload images. Please try again.");
     } finally {
       setUploading(false);
+      setCompressing(false);
     }
   };
 
@@ -200,7 +214,7 @@ export function UploadForm() {
           <div className="space-y-2">
             <Progress value={uploadProgress} className="h-2" />
             <p className="text-sm text-center text-muted-foreground">
-              Uploading... {uploadProgress}%
+              {statusMessage || (compressing ? "Optimizing images..." : `Uploading... ${uploadProgress}%`)}
             </p>
           </div>
         )}

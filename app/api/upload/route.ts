@@ -61,19 +61,13 @@ export async function POST(request: NextRequest) {
           await uploadVideoToDrive(videoStream, fileName, file.type, file.size);
           return { success: true, type: 'video' };
         } else {
-          // Optimize image using sharp
-          const fileStream = fileToNodeStream(file);
-          const optimizedStream = fileStream.pipe(
-            sharp()
-              .resize(2000, 2000, {
-                fit: 'inside',
-                withoutEnlargement: true,
-              })
-              .jpeg({ quality: 85, progressive: true })
-          );
+          // Upload image directly without heavy processing (client handles compression)
+          const fileName = file.name.endsWith('.jpg') || file.name.endsWith('.jpeg')
+            ? `wedding_${timestamp}_${randomStr}.jpg`
+            : `wedding_${timestamp}_${randomStr}.${file.name.split('.').pop()}`;
 
-          const fileName = `wedding_${timestamp}_${randomStr}.jpg`;
-          await uploadImageToDrive(optimizedStream, fileName, 'image/jpeg');
+          const imageStream = fileToNodeStream(file);
+          await uploadImageToDrive(imageStream, fileName, file.type, file.size);
           return { success: true, type: 'image' };
         }
       } catch (error) {
