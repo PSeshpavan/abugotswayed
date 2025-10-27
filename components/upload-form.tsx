@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Upload, Image as ImageIcon, CheckCircle2, XCircle, X } from "lucide-react";
 import { compressImages } from "@/lib/image-compression";
-import { uploadFilesInChunks } from "@/lib/chunked-upload";
+import { uploadDirectlyToDrive } from "@/lib/direct-drive-upload";
 
 export function UploadForm() {
   const [files, setFiles] = useState<File[]>([]);
@@ -66,34 +66,45 @@ export function UploadForm() {
 
       setCompressing(false);
 
-      // Step 2: Upload files using chunked upload (90% of progress)
-      const result = await uploadFilesInChunks(
-        compressedFiles,
-        (currentFile, totalFiles, fileProgress) => {
+      // Step 2: Upload files directly to Google Drive (90% of progress)
+      let uploadedCount = 0;
+      let failedCount = 0;
+
+      for (let i = 0; i < compressedFiles.length; i++) {
+        const file = compressedFiles[i];
+        const filesCompleted = i;
+        const totalFiles = compressedFiles.length;
+
+        const result = await uploadDirectlyToDrive(file, (progress) => {
           // Calculate overall progress
-          const filesCompleted = currentFile - 1;
           const filesProgress = (filesCompleted / totalFiles) * 90;
-          const currentFileProgress = (fileProgress.progress / 100) * (90 / totalFiles);
+          const currentFileProgress = (progress.progress / 100) * (90 / totalFiles);
           const overallProgress = 10 + filesProgress + currentFileProgress;
 
           setUploadProgress(Math.floor(overallProgress));
           setStatusMessage(
-            `Uploading ${currentFile}/${totalFiles}: ${fileProgress.fileName} (${fileProgress.progress}%)`
+            `Uploading ${i + 1}/${totalFiles}: ${file.name} (${progress.progress}%)`
           );
-        }
-      );
+        });
 
-      if (result.success) {
-        setUploadProgress(100);
+        if (result.success) {
+          uploadedCount++;
+        } else {
+          failedCount++;
+          console.error(`Failed to upload ${file.name}:`, result.error);
+        }
+      }
+
+      setUploadProgress(100);
+
+      if (uploadedCount > 0) {
         setUploadStatus("success");
 
         let message = '';
-        if (result.uploadedCount > 0 && result.failedCount > 0) {
-          message = `Successfully uploaded ${result.uploadedCount} file${result.uploadedCount > 1 ? 's' : ''}. ${result.failedCount} failed.`;
-        } else if (result.uploadedCount > 0) {
-          message = `Successfully uploaded ${result.uploadedCount} file${result.uploadedCount > 1 ? 's' : ''}!`;
+        if (uploadedCount > 0 && failedCount > 0) {
+          message = `Successfully uploaded ${uploadedCount} file${uploadedCount > 1 ? 's' : ''}. ${failedCount} failed.`;
         } else {
-          message = 'No files were uploaded';
+          message = `Successfully uploaded ${uploadedCount} file${uploadedCount > 1 ? 's' : ''}!`;
         }
 
         setStatusMessage(message);
@@ -102,7 +113,7 @@ export function UploadForm() {
         }, 1500);
       } else {
         setUploadStatus("error");
-        setStatusMessage(`Upload failed. ${result.uploadedCount} succeeded, ${result.failedCount} failed.`);
+        setStatusMessage('All uploads failed. Please try again.');
       }
     } catch (error: any) {
       console.error("Upload error:", error);

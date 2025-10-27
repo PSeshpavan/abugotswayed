@@ -4,11 +4,11 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "functions": {
-    "app/api/upload-chunk/route.ts": {
-      "maxDuration": 60
+    "app/api/start-upload/route.ts": {
+      "maxDuration": 30
     },
-    "app/api/finalize-upload/route.ts": {
-      "maxDuration": 300
+    "app/api/complete-upload/route.ts": {
+      "maxDuration": 30
     },
     "app/api/video/[fileId]/route.ts": {
       "maxDuration": 60
